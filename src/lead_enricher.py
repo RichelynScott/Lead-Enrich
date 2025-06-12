@@ -7,7 +7,8 @@ from crewai import Crew, Process
 from .models.schemas import (
     EmailContext, EnrichmentField, EnrichmentResult, FieldType,
     DiscoveryResult, CompanyProfileResult, FundingResult, 
-    TechStackResult, MetricsResult, GeneralResult
+    TechStackResult, MetricsResult, GeneralResult,
+    CSVRow, CSVProcessingResult
 )
 from .agents.discovery_agent import create_discovery_agent
 from .agents.company_profile_agent import create_company_profile_agent
@@ -229,3 +230,207 @@ class LeadEnricher:
         """
         import asyncio
         return asyncio.run(self.enrich_email(email, fields))
+    
+    def _detect_missing_fields(self, csv_row: CSVRow) -> List[EnrichmentField]:
+        """Detect which fields are missing from CSV row and need enrichment."""
+        missing_fields = []
+        
+        if not csv_row.company_name or not csv_row.website:
+            missing_fields.append(EnrichmentField(
+                name="company_basics",
+                type=FieldType.DISCOVERY,
+                description="Basic company information including name and website",
+                required=True
+            ))
+        
+        if not csv_row.industry or not csv_row.company_size:
+            missing_fields.append(EnrichmentField(
+                name="company_profile",
+                type=FieldType.COMPANY_PROFILE,
+                description="Company profile including industry and size",
+                required=True
+            ))
+        
+        missing_fields.append(EnrichmentField(
+            name="funding_info",
+            type=FieldType.FUNDING,
+            description="Company funding and investment information",
+            required=False
+        ))
+        
+        missing_fields.append(EnrichmentField(
+            name="tech_stack",
+            type=FieldType.TECH_STACK,
+            description="Technology stack and development tools",
+            required=False
+        ))
+        
+        missing_fields.append(EnrichmentField(
+            name="business_metrics",
+            type=FieldType.METRICS,
+            description="Business metrics and performance data",
+            required=False
+        ))
+        
+        return missing_fields
+    
+    def _save_csv_results(self, results: List[EnrichmentResult], output_path: str):
+        """Save enrichment results to CSV file."""
+        import pandas as pd
+        
+        rows = []
+        for result in results:
+            row = {
+                'email': result.email,
+                'domain': result.domain,
+                'overall_confidence': result.overall_confidence,
+                'processing_time': result.processing_time,
+                'errors': '; '.join(result.errors) if result.errors else ''
+            }
+            
+            if result.discovery:
+                row.update({
+                    'company_name': result.discovery.company_name,
+                    'website': result.discovery.website,
+                    'description': result.discovery.description,
+                    'discovery_confidence': result.discovery.confidence_score
+                })
+            
+            if result.company_profile:
+                row.update({
+                    'industry': result.company_profile.industry,
+                    'company_size': result.company_profile.company_size,
+                    'headquarters': result.company_profile.headquarters,
+                    'founded_year': result.company_profile.founded_year,
+                    'profile_confidence': result.company_profile.confidence_score
+                })
+            
+            if result.funding:
+                row.update({
+                    'total_funding': result.funding.total_funding,
+                    'last_funding_round': result.funding.last_funding_round,
+                    'last_funding_amount': result.funding.last_funding_amount,
+                    'funding_confidence': result.funding.confidence_score
+                })
+            
+            if result.tech_stack:
+                row.update({
+                    'technologies': '; '.join(result.tech_stack.technologies),
+                    'programming_languages': '; '.join(result.tech_stack.programming_languages),
+                    'tech_confidence': result.tech_stack.confidence_score
+                })
+            
+            if result.metrics:
+                row.update({
+                    'revenue': result.metrics.revenue,
+                    'employee_count': result.metrics.employee_count,
+                    'growth_rate': result.metrics.growth_rate,
+                    'metrics_confidence': result.metrics.confidence_score
+                })
+            
+            rows.append(row)
+        
+        df = pd.DataFrame(rows)
+        df.to_csv(output_path, index=False)
+    
+    def enrich_csv(self, csv_file_path: str, output_path: Optional[str] = None) -> CSVProcessingResult:
+        """Process CSV file and enrich missing company data."""
+        import pandas as pd
+        
+        try:
+            df = pd.read_csv(csv_file_path)
+            results = []
+            errors = []
+            successful_count = 0
+            
+            for index, row in df.iterrows():
+                try:
+                    csv_row = CSVRow(
+                        email=row.get('email', ''),
+                        company_name=row.get('company_name'),
+                        website=row.get('website'),
+                        industry=row.get('industry'),
+                        company_size=row.get('company_size'),
+                        headquarters=row.get('headquarters'),
+                        raw_data=row.to_dict()
+                    )
+                    
+                    if not csv_row.email:
+                        errors.append(f"Row {index}: Missing email address")
+                        continue
+                    
+                    missing_fields = self._detect_missing_fields(csv_row)
+                    if missing_fields:
+                        result = self.enrich_email_sync(csv_row.email, missing_fields)
+                        results.append(result)
+                        if not result.errors:
+                            successful_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Row {index}: {str(e)}")
+            
+            if output_path:
+                self._save_csv_results(results, output_path)
+            
+            return CSVProcessingResult(
+                total_rows=len(df),
+                processed_rows=len(results),
+                successful_enrichments=successful_count,
+                failed_enrichments=len(results) - successful_count,
+                results=results,
+                errors=errors
+            )
+            
+        except Exception as e:
+            raise ValueError(f"Error processing CSV file: {str(e)}")
+    
+    async def enrich_csv_async(self, csv_file_path: str, output_path: Optional[str] = None) -> CSVProcessingResult:
+        """Asynchronous version of CSV processing."""
+        import pandas as pd
+        
+        try:
+            df = pd.read_csv(csv_file_path)
+            results = []
+            errors = []
+            successful_count = 0
+            
+            for index, row in df.iterrows():
+                try:
+                    csv_row = CSVRow(
+                        email=row.get('email', ''),
+                        company_name=row.get('company_name'),
+                        website=row.get('website'),
+                        industry=row.get('industry'),
+                        company_size=row.get('company_size'),
+                        headquarters=row.get('headquarters'),
+                        raw_data=row.to_dict()
+                    )
+                    
+                    if not csv_row.email:
+                        errors.append(f"Row {index}: Missing email address")
+                        continue
+                    
+                    missing_fields = self._detect_missing_fields(csv_row)
+                    if missing_fields:
+                        result = await self.enrich_email(csv_row.email, missing_fields)
+                        results.append(result)
+                        if not result.errors:
+                            successful_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Row {index}: {str(e)}")
+            
+            if output_path:
+                self._save_csv_results(results, output_path)
+            
+            return CSVProcessingResult(
+                total_rows=len(df),
+                processed_rows=len(results),
+                successful_enrichments=successful_count,
+                failed_enrichments=len(results) - successful_count,
+                results=results,
+                errors=errors
+            )
+            
+        except Exception as e:
+            raise ValueError(f"Error processing CSV file: {str(e)}")

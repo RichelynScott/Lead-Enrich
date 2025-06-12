@@ -1,10 +1,12 @@
 # Lead Enricher - Python Implementation
 
-A powerful multiagent lead enrichment system built with CrewAI that extracts comprehensive company information from email domains. This is a Python conversion of the original TypeScript fire-enrich project, now using CrewAI's robust multiagent framework.
+A powerful multiagent lead enrichment system built with CrewAI that extracts comprehensive company information from email domains. This is a Python conversion of the original TypeScript fire-enrich project, now using CrewAI's robust multiagent framework with Crawl4AI web scraping.
 
 ## 🚀 Features
 
-- **Multiagent Architecture**: 5 specialized AI agents working sequentially
+- **Multiagent Architecture**: 6 specialized AI agents working sequentially
+- **Hybrid Web Scraping**: Crawl4AI as primary scraper with Firecrawl fallback for maximum reliability
+- **CSV Processing**: Batch process existing data files and enrich missing information
 - **Comprehensive Data Extraction**: Company profiles, funding, tech stack, metrics, and more
 - **High Confidence Scoring**: Each extraction includes confidence metrics and source tracking
 - **Flexible Field Configuration**: Customize what information to extract
@@ -23,8 +25,9 @@ A powerful multiagent lead enrichment system built with CrewAI that extracts com
 ## 📋 Requirements
 
 - Python 3.12+
-- Firecrawl API key
+- Firecrawl API key (for fallback scraping)
 - OpenAI API key
+- Crawl4AI (automatically installed)
 
 ## 🛠️ Installation
 
@@ -43,8 +46,13 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edit .env and add your API keys:
-# FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+# FIRECRAWL_API_KEY=your_firecrawl_api_key_here  # Used as fallback
 # OPENAI_API_KEY=your_openai_api_key_here
+```
+
+4. **Initialize Crawl4AI** (if not already done):
+```bash
+crawl4ai-setup
 ```
 
 ## 🎯 Quick Start
@@ -115,6 +123,34 @@ result = enricher.enrich_email(email_context)
 print(f"Company: {result.discovery.company_name}")
 ```
 
+### CSV Processing
+
+```python
+from src.lead_enricher import LeadEnricher
+
+enricher = LeadEnricher()
+
+# Process CSV file and enrich missing data
+result = enricher.enrich_csv('leads.csv', 'enriched_leads.csv')
+
+print(f"Processed {result.processed_rows} rows")
+print(f"Successful enrichments: {result.successful_enrichments}")
+```
+
+### Async CSV Processing
+
+```python
+import asyncio
+from src.lead_enricher import LeadEnricher
+
+async def process_csv():
+    enricher = LeadEnricher()
+    result = await enricher.enrich_csv_async('leads.csv', 'enriched_leads.csv')
+    return result
+
+result = asyncio.run(process_csv())
+```
+
 ## 📊 Field Types
 
 The system supports various field types that determine which agent handles the extraction:
@@ -132,7 +168,7 @@ The system supports various field types that determine which agent handles the e
 
 ```bash
 # Required
-FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+FIRECRAWL_API_KEY=your_firecrawl_api_key_here  # Used as fallback scraper
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional
@@ -140,6 +176,18 @@ OPENAI_MODEL=gpt-4                    # Default: gpt-4
 OPENAI_TEMPERATURE=0.1                # Default: 0.1
 FIRECRAWL_TIMEOUT=30000              # Default: 30000ms
 ```
+
+### CSV File Format
+
+The system can process CSV files with the following columns (all optional except email):
+
+```csv
+email,company_name,website,industry,company_size,headquarters
+contact@stripe.com,Stripe,https://stripe.com,Fintech,1000-5000,San Francisco
+hello@openai.com,,,AI,,
+```
+
+The system will automatically detect missing fields and enrich only the data that's needed.
 
 ### Custom Field Configuration
 
@@ -198,8 +246,11 @@ python test_import.py
 # Test basic functionality
 python test_basic_imports.py
 
-# Run example
+# Run individual email example
 python example.py
+
+# Run CSV processing example
+python example_csv.py
 ```
 
 ## 🔄 Migration from TypeScript
@@ -207,6 +258,8 @@ python example.py
 This Python implementation maintains full compatibility with the original TypeScript version while leveraging CrewAI's advanced multiagent capabilities:
 
 ### Key Improvements
+- **Hybrid Web Scraping**: Crawl4AI primary with Firecrawl fallback for maximum reliability
+- **CSV Processing**: Batch process existing data files efficiently
 - **Robust Framework**: Built on CrewAI's proven multiagent architecture
 - **Better Error Handling**: Enhanced error tracking and recovery
 - **Improved Scalability**: More efficient agent coordination

@@ -91,3 +91,20 @@ class EnrichmentResult(BaseModel):
     overall_confidence: float = Field(ge=0, le=1)
     processing_time: Optional[float] = None
     errors: List[str] = []
+
+class CSVRow(BaseModel):
+    email: str
+    company_name: Optional[str] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+    headquarters: Optional[str] = None
+    raw_data: Dict[str, Any] = {}
+
+class CSVProcessingResult(BaseModel):
+    total_rows: int
+    processed_rows: int
+    successful_enrichments: int
+    failed_enrichments: int
+    results: List[EnrichmentResult]
+    errors: List[str] = []

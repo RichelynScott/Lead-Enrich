@@ -1,12 +1,12 @@
 from crewai import Agent
-from crewai_tools import FirecrawlScrapeWebsiteTool, FirecrawlSearchTool
+from ..tools.hybrid_scraping_tools import HybridScrapeTool, HybridSearchTool
 from ..models.schemas import GeneralResult
 
 def create_general_agent() -> Agent:
     """Create the General Agent responsible for extracting any additional requested information."""
     
-    scrape_tool = FirecrawlScrapeWebsiteTool()
-    search_tool = FirecrawlSearchTool()
+    scrape_tool = HybridScrapeTool()
+    search_tool = HybridSearchTool()
     
     return Agent(
         role="General Research Specialist",

@@ -1,11 +1,11 @@
 from crewai import Agent
-from crewai_tools import FirecrawlScrapeWebsiteTool, FirecrawlSearchTool
+from ..tools.hybrid_scraping_tools import HybridScrapeTool, HybridSearchTool
 
 def create_discovery_agent() -> Agent:
     """Create the Discovery Agent responsible for extracting foundational company information."""
     
-    scrape_tool = FirecrawlScrapeWebsiteTool()
-    search_tool = FirecrawlSearchTool()
+    scrape_tool = HybridScrapeTool()
+    search_tool = HybridSearchTool()
     
     return Agent(
         role="Company Discovery Specialist",

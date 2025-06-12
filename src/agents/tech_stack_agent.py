@@ -1,12 +1,12 @@
 from crewai import Agent
-from crewai_tools import FirecrawlScrapeWebsiteTool, FirecrawlSearchTool
+from ..tools.hybrid_scraping_tools import HybridScrapeTool, HybridSearchTool
 from ..models.schemas import TechStackResult
 
 def create_tech_stack_agent() -> Agent:
     """Create the Tech Stack Agent responsible for extracting technology and infrastructure information."""
     
-    scrape_tool = FirecrawlScrapeWebsiteTool()
-    search_tool = FirecrawlSearchTool()
+    scrape_tool = HybridScrapeTool()
+    search_tool = HybridSearchTool()
     
     return Agent(
         role="Technology Research Specialist",

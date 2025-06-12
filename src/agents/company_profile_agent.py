@@ -1,12 +1,12 @@
 from crewai import Agent
-from crewai_tools import FirecrawlScrapeWebsiteTool, FirecrawlSearchTool
+from ..tools.hybrid_scraping_tools import HybridScrapeTool, HybridSearchTool
 from ..models.schemas import CompanyProfileResult
 
 def create_company_profile_agent() -> Agent:
     """Create the Company Profile Agent responsible for extracting detailed company information."""
     
-    scrape_tool = FirecrawlScrapeWebsiteTool()
-    search_tool = FirecrawlSearchTool()
+    scrape_tool = HybridScrapeTool()
+    search_tool = HybridSearchTool()
     
     return Agent(
         role="Company Profile Research Specialist",
