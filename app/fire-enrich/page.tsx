@@ -102,10 +102,17 @@ export default function CSVEnrichmentPage() {
     }
   };
 
-  const handleStartEnrichment = (email: string, fields: EnrichmentField[]) => {
+  const handleStartEnrichment = (email: string, fields: EnrichmentField[], usePythonBackend?: boolean) => {
     setEmailColumn(email);
     setSelectedFields(fields);
     setStep('enrichment');
+    
+    // Store the backend choice for the enrichment table
+    if (usePythonBackend) {
+      localStorage.setItem('use_python_backend', 'true');
+    } else {
+      localStorage.removeItem('use_python_backend');
+    }
   };
 
   const handleBack = () => {

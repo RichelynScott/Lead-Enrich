@@ -81,6 +81,9 @@ export function EnrichmentTable({ rows, fields, emailColumn }: EnrichmentTablePr
     setAgentMessages([]); // Clear previous messages
     
     try {
+      // Check if Python backend should be used
+      const usePythonBackend = localStorage.getItem('use_python_backend') === 'true';
+      
       // Get API keys from localStorage if not in environment
       const firecrawlApiKey = localStorage.getItem('firecrawl_api_key');
       const openaiApiKey = localStorage.getItem('openai_api_key');
@@ -98,7 +101,19 @@ export function EnrichmentTable({ rows, fields, emailColumn }: EnrichmentTablePr
         headers['X-OpenAI-API-Key'] = openaiApiKey;
       }
       
-      const response = await fetch('/api/enrich', {
+      // Choose API endpoint based on backend preference
+      const apiEndpoint = usePythonBackend ? '/api/enrich-python' : '/api/enrich';
+      
+      if (usePythonBackend) {
+        // Add message indicating Python backend usage
+        setAgentMessages(prev => [...prev, {
+          message: 'Using advanced Python CrewAI backend for enhanced enrichment',
+          type: 'info',
+          timestamp: Date.now()
+        }]);
+      }
+      
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({

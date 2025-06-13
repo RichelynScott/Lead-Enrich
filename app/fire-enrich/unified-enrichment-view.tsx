@@ -8,19 +8,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { CSVRow, EnrichmentField } from "@/lib/types";
 import { detectEmailColumn, EMAIL_REGEX } from "@/lib/utils/email-detection";
 import { generateVariableName } from "@/lib/utils/field-utils";
-import { X, Plus, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Plus, Sparkles, ChevronDown, ChevronUp, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UnifiedEnrichmentViewProps {
   rows: CSVRow[];
   columns: string[];
-  onStartEnrichment: (emailColumn: string, fields: EnrichmentField[]) => void;
+  onStartEnrichment: (emailColumn: string, fields: EnrichmentField[], usePythonBackend?: boolean) => void;
 }
 
 const PRESET_FIELDS: EnrichmentField[] = [
@@ -61,6 +68,8 @@ export function UnifiedEnrichmentView({ rows, columns, onStartEnrichment }: Unif
     description: '',
     type: 'string'
   });
+  const [usePythonBackend, setUsePythonBackend] = useState(false);
+  const [pythonBackendStatus, setPythonBackendStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
 
   // Auto-detect email column but stay on step 1 for confirmation
   useEffect(() => {
@@ -72,6 +81,32 @@ export function UnifiedEnrichmentView({ rows, columns, onStartEnrichment }: Unif
       }
     }
   }, [rows, columns]);
+
+  // Check Python backend availability
+  useEffect(() => {
+    const checkPythonBackend = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/health');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.enricher_ready) {
+            setPythonBackendStatus('available');
+          } else {
+            setPythonBackendStatus('unavailable');
+          }
+        } else {
+          setPythonBackendStatus('unavailable');
+        }
+      } catch (error) {
+        setPythonBackendStatus('unavailable');
+      }
+    };
+
+    checkPythonBackend();
+    // Check every 30 seconds
+    const interval = setInterval(checkPythonBackend, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Safety check for undefined props
   if (!rows || !columns || !Array.isArray(rows) || !Array.isArray(columns)) {
@@ -614,15 +649,81 @@ export function UnifiedEnrichmentView({ rows, columns, onStartEnrichment }: Unif
                 </div>
               )}
 
+              {/* Python Backend Toggle */}
+              <div className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50/50 dark:bg-gray-800/50 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      id="python-backend"
+                      checked={usePythonBackend && pythonBackendStatus === 'available'}
+                      onCheckedChange={(checked) => {
+                        if (pythonBackendStatus === 'available') {
+                          setUsePythonBackend(checked);
+                        } else {
+                          toast.error("Python backend not available. Please start the server.");
+                        }
+                      }}
+                      disabled={pythonBackendStatus !== 'available'}
+                    />
+                    <Label htmlFor="python-backend" className="flex items-center gap-2 cursor-pointer">
+                      Use Advanced Python Backend
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-sm">
+                            <div className="space-y-2">
+                              <p className="font-semibold">Advanced CrewAI Backend</p>
+                              <p className="text-sm">
+                                Uses your advanced CrewAI multi-agent system with enhanced features:
+                              </p>
+                              <ul className="text-sm list-disc list-inside">
+                                <li>Decision maker validation</li>
+                                <li>Enhanced CSV processing</li>
+                                <li>Email research capabilities</li>
+                                <li>Florida Sunbiz integration</li>
+                                <li>Superior lead enrichment</li>
+                              </ul>
+                              {pythonBackendStatus === 'unavailable' && (
+                                <p className="text-xs text-amber-600 mt-2">
+                                  Start server: <code>python -m uvicorn src.api_server:app --reload --port 8000</code>
+                                </p>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pythonBackendStatus === 'checking' && (
+                      <span className="text-xs text-gray-500">Checking...</span>
+                    )}
+                    {pythonBackendStatus === 'available' && (
+                      <span className="text-xs text-green-600 font-medium">✅ Available</span>
+                    )}
+                    {pythonBackendStatus === 'unavailable' && (
+                      <span className="text-xs text-red-600 font-medium">❌ Unavailable</span>
+                    )}
+                  </div>
+                </div>
+                {pythonBackendStatus === 'unavailable' && (
+                  <p className="text-xs text-gray-600 mt-2">
+                    To use the advanced Python backend, run: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">python -m uvicorn src.api_server:app --reload --port 8000</code>
+                  </p>
+                )}
+              </div>
+
               <Button 
                 variant="orange"
                 className="w-full mt-6 h-10 text-base" 
-                onClick={() => onStartEnrichment(emailColumn, selectedFields)}
+                onClick={() => onStartEnrichment(emailColumn, selectedFields, usePythonBackend)}
                 disabled={selectedFields.length === 0}
               >
                 <span className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
-                  Start Enrichment
+                  Start Enrichment {usePythonBackend && pythonBackendStatus === 'available' ? '(Python Backend)' : '(TypeScript)'}
                 </span>
               </Button>
             </Card>
