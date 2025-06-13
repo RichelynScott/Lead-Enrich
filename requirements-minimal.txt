@@ -1,0 +1,21 @@
+# Minimal requirements for Fire Enrich Python backend
+# Use this if the full requirements.txt has dependency conflicts
+
+# Core dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.7.0,<3.0.0
+python-dotenv==1.0.0
+
+# AI and enrichment
+openai>=1.30.0,<1.50.0
+httpx==0.27.2
+firecrawl-py==0.0.16
+
+# Data processing
+pandas>=2.0.0
+typing-extensions>=4.11,<5
+
+# Optional: Simplified CrewAI alternative
+# If you want to use CrewAI later, install it separately:
+# pip install crewai==0.70.1

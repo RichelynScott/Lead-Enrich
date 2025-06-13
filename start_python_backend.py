@@ -23,10 +23,20 @@ def main():
         print()
     
     try:
+        # Check if we should use simple version
+        use_simple = input("Use simplified backend (no CrewAI)? [y/N]: ").lower().startswith('y')
+        
+        if use_simple:
+            server_module = "src.api_server_simple:app"
+            print("🔧 Using simplified backend (recommended for avoiding dependency conflicts)")
+        else:
+            server_module = "src.api_server:app"
+            print("🚀 Using full CrewAI backend")
+        
         # Start the FastAPI server
         cmd = [
             sys.executable, "-m", "uvicorn", 
-            "src.api_server:app", 
+            server_module, 
             "--reload", 
             "--port", "8000",
             "--host", "127.0.0.1"
